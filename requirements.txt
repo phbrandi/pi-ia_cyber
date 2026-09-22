@@ -1,0 +1,12 @@
+# Ambiente da Avaliação Intermediária (dupla 025bc8)
+# scikit-learn fixado em 1.7.2: é a versão que treinou o RF salvo em saida/.
+# Com 1.9.0 o mesmo random_state produz outra floresta (recall 0,9369 em vez de 0,9332).
+scikit-learn==1.7.2
+pandas==2.3.3
+numpy
+matplotlib
+joblib
+xgboost
+jupyter
+ipykernel
+nbformat
