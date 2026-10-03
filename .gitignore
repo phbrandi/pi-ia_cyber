@@ -9,3 +9,6 @@ __pycache__/
 # sistema
 Thumbs.db
 .DS_Store
+
+# guia pessoal de estudo, fora da entrega
+GUIA-ESTUDO.md

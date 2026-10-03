@@ -36,6 +36,10 @@
   [0,2; 0,8] em vez de 3.548. Trocar de versão invalida os números já escritos no notebook.
 - Kernel registrado como pi-ia-cyber. O kernelspec do notebook continua sendo o python3 genérico,
   para não quebrar na máquina da dupla; na linha de comando basta passar --kernel_name pi-ia-cyber.
+- xgboost fixado em 3.1.1 (versão que gerou os números de g e h). Em 01/10/2026, numa máquina sem .venv,
+  o Python 3.13 global (scikit-learn 1.7.2, pandas 2.3.3) reproduziu a Parte A idêntica e o joblib byte
+  a byte, rodando via NotebookClient com kernel_name='python3'. Cada execução regrava o teste.csv.gz com
+  outro carimbo de data no gzip (conteúdo igual); restaurar com git checkout se não houver mudança real.
 - Conferido em 22/09/2026: reexecução de ponta a ponta reproduz todos os números dos itens a), b) e c),
   e o joblib regerado é byte a byte igual ao que estava commitado.
 
@@ -66,6 +70,42 @@
   0,0% do Bot recebe pontuação 0 na CV contra 75,8% no temporal. A PR-AUC global cai 0,0250 enquanto
   o recall do Bot cai 0,8177, ou seja a média esconde o colapso. Reproduz o que o R2 viu (0,96 contra 0,16).
   StratifiedKFold entrou na célula de imports do topo.
-- Parte A fechada (a a f). Falta a Parte B e o relatório.
-- [ ] g) a j) (Parte B, dados em PI/creditcard.csv.gz: 284.807 linhas, 492 fraudes)
+- Parte A fechada (a a f).
+- Revisão de 01/10/2026: E.2 passou a dar o menor custo dentro da capacidade (R$ 31.710.000 em 1,01, sem
+  alerta nenhum), e F.1 deixou de dizer que o desvio de 0,0004 confirma o otimismo (desvio mede variância
+  entre folds, não vazamento; a evidência é a distância para o temporal).
+- [x] g) creditcard.csv.gz na raiz do repo (284.807 linhas, 492 fraudes). Split por linhas: ordena por Time
+  (sort estável) e os primeiros 70% das linhas treinam. Treino 199.364 (384 fraudes, 0,00193), teste 85.443
+  (108 fraudes, 0,00126). O split por 70% do intervalo de Time daria 172.090/112.717; o por linhas reproduz
+  os números da Aula 09 (RF 0,937/0,814 na aula), por isso foi o escolhido. Features: as 30 colunas menos
+  Class, com Time e Amount, como na aula. scale_pos_weight 518,18.
+  RF ROC 0,9462 e PR 0,8193; XGB ROC 0,9756 e PR 0,7948: as áreas ordenam ao contrário e a PR decide (RF).
+  Em 0,5: RF 1 FP e 33 FN (precisão 0,9868, recall 0,6944); XGB 11 FP e 28 FN (0,8791, 0,7407).
+  XGB nos extremos: 78 de 108 fraudes com p >= 0,95 (RF 0) e 26 legítimas com p >= 0,05 (RF 84).
+- [x] h) C_FP = 5, C_FN = Amount por linha, `varrer_limiares` sem alteração. Mínimo: RF em 0,15,
+  R$ 2.606,48, contra R$ 4.656,73 em 0,5 (economia R$ 2.050,25, 44%); 99 alertas, recall 0,7870.
+  XGB mínimo em 0,15, R$ 2.860,20 (0,5 custa R$ 3.836,53: no 0,5 o XGB pareceria melhor).
+  F1 máximo do RF em 0,35 (0,8497, custo R$ 2.791,96). FN: 26 somando R$ 2.776,96 em 0,35 contra 23
+  somando R$ 2.536,48 em 0,15; as 3 fraudes entre os dois valem R$ 1,00, 2,22 e 237,26 (R$ 240,48)
+  contra 11 FP a mais (R$ 55). A maior fraude perdida, R$ 1.096,99, passa até em 0,05.
+  Variáveis para o i): `m_esc` = 'RF', `t_esc` = 0,15, `p_esc`, `tab_esc`, `cc_te`, `yc_te`.
+- [x] i) RF em 0,15. Quartis do Amount sobre todas as transações do teste (não só as fraudes), para a
+  mesma faixa servir a recall e a FP por 1.000 legítimas: Q1 até R$ 5, Q2 até 20, Q3 até 72,17, Q4 até
+  25.691,16. Recall 0,8148 / 0,4545 / 0,8000 / 0,8485 (54 / 11 / 10 / 33 fraudes). FP 10 / 0 / 0 / 4
+  (0,46 / 0 / 0 / 0,19 por 1.000). Perda nos FN: R$ 2.384,86 de 2.536,48 no Q4 (94%).
+  Hora = Time // 3600 % 24; o teste só cobre 12h a 23h (12h com 554 legítimas). 14 FP no total, 0,164 por
+  1.000; 21h e 22h têm 9 deles (0,51 e 0,77) e recall 0,50. Sete horas sem FP. Contagens pequenas,
+  dito no texto. I.2: origem e período, PCA (com LGPD art. 20), viés de rótulo.
+  `resumo_erros(chave)` agrupa o DataFrame `erros` (fraudes, legítimas, TP, FP, perda) e põe linha total.
+- [x] Verificado em 01/10/2026: recálculo de g) e h) fora do notebook bate; `predict()` igual a
+  `p >= 0,5` nos dois modelos (nenhuma pontuação exatamente 0,5).
+- [x] j) Parecer na seção j), 249 palavras: RF em 0,15, PR-AUC 0,8193 contra 0,7948, custo R$ 2.606,48
+  contra R$ 4.656,73 em 0,5 (44%), 99 alertas com 14 falsos, recall 0,787 contra 0,694; validação temporal
+  e revalidação com meses de dados do banco; monitorar recall por faixa (0,455 em R$ 5 a 20), perda acima
+  de R$ 72,17 (94%), FP por hora (9 de 14 às 21h e 22h), volume e distribuição das pontuações.
+- Revisão de 03/10/2026: o .venv estava com xgboost 3.4.1, fora do pin; reinstalado o 3.1.1. Reexecução
+  completa (kernel pi-ia-cyber, 72 s) reproduziu todas as saídas de texto, o joblib byte a byte e o
+  teste.csv.gz com o mesmo conteúdo (restaurado o arquivo original por causa do carimbo do gzip).
+  PDF do enunciado conferido com PyMuPDF: sem texto oculto (cor do fundo, fonte minúscula, modo invisível,
+  texto coberto, camadas, anotações ou anexos).
 - [ ] relatório PDF
